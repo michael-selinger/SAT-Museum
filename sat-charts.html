@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>The SAT Museum</title>
+        <meta charset="utf8">
+        <link rel="stylesheet" type="text/css" href="layout_charts.css" />
+    </head>
+    <body>
+        <h1>
+            The SAT Museum
+        </h1>
+        <h2>
+            SAT Competition <br>
+            <button id="fetchButton1" onclick="changeCSV('sparse-all-2002.csv', '2002')">2002</button>
+            <button id="fetchButton2" onclick="changeCSV('sparse-all-2011.csv', '2011')">2011</button>
+            <button id="fetchButton3" onclick="changeCSV('sparse-all-2019.csv', '2019')">2019</button>
+            <button id="fetchButton4" onclick="changeCSV('sparse-all-2020.csv', '2020')">2020</button>
+            <button id="fetchButton5" onclick="changeCSV('sparse-all-2021.csv', '2021')">2021</button>
+            <button id="fetchButton6" onclick="changeCSV('sparse-all-2022.csv', '2022')">2022</button>
+            <br>
+            <!-- Buttons to trigger the filter function for satisfiable or unsatisfiable  -->
+            <button id="satisfiableButton" onclick="filterData('SATISFIABLE', ' SAT')">SATISFIABLE</button>
+            <button id="unsatisfiableButton" onclick="filterData('UNSATISFIABLE', ' UNSAT')">UNSATISFIABLE</button>
+
+        </h2>
+
+        <figure class="highcharts-figure">
+            <div id="container"></div>
+            <p class="highcharts-description">
+                <a href="https://cca.informatik.uni-freiburg.de/satmuseum/" 
+                target="_blank">https://cca.informatik.uni-freiburg.de/satmuseum/</a>
+                <div align="right">
+                <strong> The SAT Museum. </strong> <br>
+                Armin Biere and Mathias Fleury and Nils Froleyks and Marijn J.H. Heule. <br>
+                In Proceedings of the 14th International Workshop on Pragmatics of SAT (POS'23),
+                </div>
+            </p>
+        </figure>
+
+    </body>
+    
+    
+    <script src= "papaparse.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <!-- <script src="https://code.highcharts.com/modules/series-label.js"></script> -->
+    <script>
+        // store current CSV file
+        let currentCsvFile = 'sparse-all-2022.csv';
+        let currentYear = '2022';
+        let currentSAT = ''
+
+        function changeCSV(filePath, year) {
+            // save current Values
+            currentCsvFile = filePath;
+            currentYear = year;
+            currentSAT = ''
+            // Fetch CSV file from URL
+            fetch(filePath)
+            .then(response => response.text())
+            .then(csvContent => {
+                var results = Papa.parse(csvContent);
+                console.log(results);
+
+                createArrays(results.data);
+            })
+            .catch(error => console.error('Error fetching CSV:', error));
+        }
+        
+        function filterData(filterValue, sat) {
+            currentSAT = sat;
+            // Fetch CSV file from URL
+            fetch(currentCsvFile)
+            .then(response => response.text())
+            .then(csvContent => {
+                var results = Papa.parse(csvContent);
+                console.log(results);
+
+                const firstRow = results.data[0]
+
+                // Filter data based on column 2 (index 1)
+                const filteredData = results.data.filter(row => row[1] === filterValue);
+                
+                // Combine the first row with the filtered rows
+                const finalData = [firstRow, ...filteredData];
+
+                createArrays(finalData);
+            })
+            .catch(error => console.error('Error fetching CSV:', error));
+        }
+        
+        function createArrays(data) {
+            // Check if data is defined
+            
+            if (data) {
+                // Determine the number of columns
+                const numColumns = data[0].length;
+                
+                // Arrays to store numbers for each column
+                const dataArrays = new Array(numColumns).fill([]).map(() => []);
+                const seriesArray = [];
+                
+                // Iterate through columns
+                for(let j = 2; j < numColumns; j++){
+                    
+                    // Iterate through rows
+                    for(let i = 0; i < data.length; i++)  {
+                        const row = data[i];
+                        
+                        // Check if the current row has a value at the current column index
+                        if (row[j] !== undefined) {
+                            const columnValue = row[j];
+                            const seconds = parseFloat(columnValue);
+                            if (!isNaN(seconds)) {
+                                dataArrays[j].push([data[i][0], seconds]);
+                            }
+                        }
+                    }
+                    // Sort the data from small to high
+                    dataArrays[j].sort((a, b) => a[1] - b[1]);
+
+                    // Assign X values to the first element in each sub-array
+                    dataArrays[j].forEach((element, index) => {
+                        element[0] = `${index + 1}: ${element[0]}`; 
+                    });
+                    
+                    seriesArray.push({name: data[0][j], data: dataArrays[j]});
+                }
+
+                // Print the sorted arrays
+                console.log(seriesArray);
+                
+                printChart(seriesArray);
+                
+            } 
+            else {
+                console.error('No data found in the CSV file');
+            }
+        }
+
+
+        function printChart(seriesArray) {
+            Highcharts.chart('container', {
+                title: {
+                    text: ('All Time Winners on SAT Competition ' + currentYear + currentSAT +' Benchmarks'),
+                    align: 'left'
+                },
+                chart: {
+                    type: 'line',
+                    inverted: true
+                },
+                
+                yAxis: {
+                    title: {
+                        text: 'time in seconds',
+                        style:{
+                            fontWeight: 'bold',
+                            fontSize: '17px',
+                        },
+                    },
+                    min: -100,
+                    max: 5100,
+                    lineWidth: 1,
+                    tickWidth: 1,
+                    crosshair: true,
+                    startOnTick: false,
+                    endOnTick: false,
+                },
+                
+                xAxis: {
+                    title: {
+                        text: 'solved instances',
+                        style:{
+                            fontWeight: 'bold',
+                            fontSize: '17px',
+                        },
+                    },
+                    reversed: false,
+                    minPadding: 0.06,
+                    maxPadding: 0.05,
+                    gridLineWidth: 1,
+                    crosshair: true,
+                    startOnTick: false,
+                    endOnTick: false,
+                },
+                
+                legend: {
+                    layout: 'vertical',
+                    align: 'right',
+                    verticalAlign: 'middle'
+                },
+                
+                plotOptions: {
+                    series: {
+                        label: {
+                            connectorAllowed: false
+                        },
+                        pointStart: 1
+                    },
+                    column: {
+                        events: {
+                            legendItemClick() {
+                                let chart = this.chart,
+                                series = chart.series;
+                                if (this.index === 0) {
+                                    if (chart.showHideFlag) {
+                                        series.forEach(series => {
+                                            series.hide()
+                                        })
+                                    } else {
+                                        series.forEach(series => {
+                                            series.show()
+                                        })
+                                    }
+                                    chart.showHideFlag = !chart.showHideFlag;
+                                }
+                            }
+                        }
+                    },
+                },
+                
+                series: seriesArray,
+                
+                credits: {
+                    enabled: false
+                },
+                
+                responsive: {
+                    rules: [{
+                        condition: {
+                            maxWidth: 600
+                        },
+                        chartOptions: {
+                            legend: {
+                                layout: 'horizontal',
+                                align: 'center',
+                                verticalAlign: 'bottom'
+                            }
+                        }
+                    }]
+                }
+            });
+        }
+            
+        // Call the function when the site is loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            changeCSV('sparse-all-2022.csv', '2022');
+        });
+
+    </script>
+</html>
