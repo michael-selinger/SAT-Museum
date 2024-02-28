@@ -10,7 +10,8 @@
             The SAT Museum
         </h1>
         <h2>
-            SAT Competition <br>
+            SAT Competition 
+            <br>
             <button id="fetchButton1" onclick="changeCSV('sparse-all-2002.csv', '2002')">2002</button>
             <button id="fetchButton2" onclick="changeCSV('sparse-all-2011.csv', '2011')">2011</button>
             <button id="fetchButton3" onclick="changeCSV('sparse-all-2019.csv', '2019')">2019</button>
@@ -21,48 +22,44 @@
             <!-- Buttons to trigger the filter function for satisfiable or unsatisfiable  -->
             <button id="satisfiableButton" onclick="filterData('SATISFIABLE', ' SAT')">SATISFIABLE</button>
             <button id="unsatisfiableButton" onclick="filterData('UNSATISFIABLE', ' UNSAT')">UNSATISFIABLE</button>
-
         </h2>
-
+        
         <figure class="highcharts-figure">
             <div id="container"></div>
             <p class="highcharts-description">
                 <a href="https://cca.informatik.uni-freiburg.de/satmuseum/" 
                 target="_blank">https://cca.informatik.uni-freiburg.de/satmuseum/</a>
+                <div> Chart created by Michael Selinger (2024)</div>
                 <div align="right">
-                <strong> The SAT Museum. </strong> <br>
-                Armin Biere and Mathias Fleury and Nils Froleyks and Marijn J.H. Heule. <br>
-                In Proceedings of the 14th International Workshop on Pragmatics of SAT (POS'23),
+                    <strong> The SAT Museum. </strong> <br>
+                    Armin Biere and Mathias Fleury and Nils Froleyks and Marijn J.H. Heule. <br>
+                    In Proceedings of the 14th International Workshop on Pragmatics of SAT (POS'23),
                 </div>
             </p>
         </figure>
-
     </body>
     
     
     <script src= "papaparse.js"></script>
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/export-data.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
-    <!-- <script src="https://code.highcharts.com/modules/series-label.js"></script> -->
     <script>
         // store current CSV file
         let currentCsvFile = 'sparse-all-2022.csv';
         let currentYear = '2022';
-        let currentSAT = ''
+        let currentSAT = '';
 
         function changeCSV(filePath, year) {
             // save current Values
             currentCsvFile = filePath;
             currentYear = year;
-            currentSAT = ''
+            currentSAT = '';
             // Fetch CSV file from URL
             fetch(filePath)
             .then(response => response.text())
             .then(csvContent => {
                 var results = Papa.parse(csvContent);
-                console.log(results);
 
                 createArrays(results.data);
             })
@@ -76,7 +73,6 @@
             .then(response => response.text())
             .then(csvContent => {
                 var results = Papa.parse(csvContent);
-                console.log(results);
 
                 const firstRow = results.data[0]
 
@@ -129,9 +125,11 @@
                     seriesArray.push({name: data[0][j], data: dataArrays[j]});
                 }
 
-                // Print the sorted arrays
-                console.log(seriesArray);
-                
+                // Sort the seriesArray by the length of dataArrays
+                seriesArray.sort((a, b) => b.data.length - a.data.length);
+
+                seriesArray.unshift({name: 'Show/Hide All', visible: false});
+              
                 printChart(seriesArray);
                 
             } 
@@ -140,6 +138,25 @@
             }
         }
 
+        // Funktion zum Ausblenden aller Serien im Highcharts-Diagramm
+        function hide_all (){
+            var chart = Highcharts.charts.find(chart => chart && chart.renderTo.id === 'container');
+            if (chart) {
+                chart.series.forEach(function(series) {
+                    series.hide();
+                });
+            }
+        }
+
+        // Funktion zum Einblenden aller Serien im Highcharts-Diagramm
+        function show_all() {
+            var chart = Highcharts.charts.find(chart => chart && chart.renderTo.id === 'container');
+            if (chart) {
+                chart.series.forEach(function(series) {
+                    series.show();
+                });
+            }
+        }
 
         function printChart(seriesArray) {
             Highcharts.chart('container', {
@@ -149,7 +166,8 @@
                 },
                 chart: {
                     type: 'line',
-                    inverted: true
+                    inverted: true,
+                    height: 470
                 },
                 
                 yAxis: {
@@ -189,7 +207,9 @@
                 legend: {
                     layout: 'vertical',
                     align: 'right',
-                    verticalAlign: 'middle'
+                    verticalAlign: 'middle',
+                    itemMarginTop: 1,
+                    itemMarginBottom: 0,
                 },
                 
                 plotOptions: {
@@ -197,24 +217,17 @@
                         label: {
                             connectorAllowed: false
                         },
-                        pointStart: 1
-                    },
-                    column: {
+                        pointStart: 1,
                         events: {
-                            legendItemClick() {
-                                let chart = this.chart,
-                                series = chart.series;
-                                if (this.index === 0) {
-                                    if (chart.showHideFlag) {
-                                        series.forEach(series => {
-                                            series.hide()
-                                        })
+                            legendItemClick: function(event) {
+                                if (this.name === 'Show/Hide All') {
+                                    // Wenn auf das Dummy-Legendenelement geklickt wird, rufe die Funktion zum Ausblenden oder Anzeigen aller Serien auf
+                                    if (this.chart.series.some(series => series.visible)) {
+                                        hide_all();
                                     } else {
-                                        series.forEach(series => {
-                                            series.show()
-                                        })
+                                        show_all();
                                     }
-                                    chart.showHideFlag = !chart.showHideFlag;
+                                    return false; // Verhindere das Standardverhalten des Klicks
                                 }
                             }
                         }
@@ -243,11 +256,11 @@
                 }
             });
         }
-            
+         
         // Call the function when the site is loaded
         document.addEventListener('DOMContentLoaded', function () {
             changeCSV('sparse-all-2022.csv', '2022');
         });
-
+            
     </script>
 </html>
